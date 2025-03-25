@@ -12,7 +12,7 @@ app = Client(
 )
 
 # Variables de entorno necesarias
-CHAT_IDS = [int(chat_id) for chat_id in os.environ["CHAT_IDS"].split(",")]  # IDs de los chats a monitorear
+CHAT_IDS = [int(chat_id) for chat_id in os.environ["CHAT_ID"].split(",")]  # IDs de los chats a monitorear
 DESTINATIONS = os.environ["DESTINATIONS"].split(",")  # Lista de destinatarios
 LOG_CHAT_ID = int(os.environ["LOG_CHAT_ID"])  # ID del chat para logs
 CHANNEL_USERNAME = os.environ["CHANNEL_USERNAME"]  # @ del canal para videos
