@@ -2,10 +2,13 @@ import os
 from pyrogram import Client, filters
 from pyrogram.types import Message
 
-# Inicializa el cliente de Pyrogram con la session string de las variables de entorno
-app = Client("bot", session_string=os.environ["SESSION_STRING"])
+# Inicializa el cliente de Pyrogram con la sesión y las credenciales de API
+app = Client("bot", 
+             session_string=os.environ["SESSION_STRING"], 
+             api_id=int(os.environ["API_ID"]), 
+             api_hash=os.environ["API_HASH"])
 
-# Variables de entorno para la configuración
+# Variables de entorno adicionales
 CHAT_ID = int(os.environ["CHAT_ID"])  # ID del chat a monitorear
 KEYWORDS = os.environ["KEYWORDS"].split(",")  # Palabras clave separadas por comas
 DESTINATIONS = os.environ["DESTINATIONS"].split(",")  # Lista de @usuarios o chat_ids
