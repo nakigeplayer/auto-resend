@@ -12,10 +12,11 @@ app = Client(
 )
 
 # Variables de entorno necesarias
-CHAT_ID = int(os.environ["CHAT_ID"])  # ID del chat a monitorear
-KEYWORDS = os.environ["KEYWORDS"].split(",")  # Palabras clave, separadas por comas
+CHAT_IDS = [int(chat_id) for chat_id in os.environ["CHAT_IDS"].split(",")]  # IDs de los chats a monitorear
 DESTINATIONS = os.environ["DESTINATIONS"].split(",")  # Lista de destinatarios
 LOG_CHAT_ID = int(os.environ["LOG_CHAT_ID"])  # ID del chat para logs
+CHANNEL_USERNAME = os.environ["CHANNEL_USERNAME"]  # @ del canal para videos
+KEYWORDS = os.environ["KEYWORDS"].split(",")  # Palabras clave, separadas por comas
 destination_index = 0  # Índice para rotar destinatarios
 
 
@@ -29,10 +30,10 @@ async def log_to_chat(client, log_message: str):
         print(f"No se pudo enviar el log: {e}")
 
 
-@app.on_message(filters.chat(CHAT_ID))
-async def handle_message(client, message: Message):
+@app.on_message(filters.chat(CHAT_IDS))
+async def reenviar_a_destinatarios(client, message: Message):
     """
-    Procesar mensajes (texto, fotos, videos, archivos).
+    Manejador para reenviar mensajes desde CHAT_IDS a DESTINATIONS sin incluir información del remitente original.
     """
     global destination_index
 
@@ -49,15 +50,22 @@ async def handle_message(client, message: Message):
             destination = DESTINATIONS[destination_index]
             destination_index = (destination_index + 1) % len(DESTINATIONS)
 
-            # Reenviar el mensaje (incluye texto, fotos, videos, archivos)
-            forwarded_message = await message.forward(destination)
+            # Recrear el mensaje sin información del remitente original
+            if message.text:
+                await client.send_message(destination, message.text)
+            elif message.photo:
+                await client.send_photo(destination, message.photo.file_id, caption=message.caption)
+            elif message.video:
+                await client.send_video(destination, message.video.file_id, caption=message.caption)
+            elif message.document:
+                await client.send_document(destination, message.document.file_id, caption=message.caption)
 
-            # Log de reenvío
-            await log_to_chat(client, f"Mensaje reenviado a {destination}: {forwarded_message.link}")
+            # Log del reenvío
+            await log_to_chat(client, f"Mensaje recreado y enviado a {destination}")
 
-            # Responder con /convert en el destino si es foto, video o archivo
+            # Enviar comando /convert si aplica
             if message.photo or message.video or message.document:
-                await forwarded_message.reply_text("/convert")
+                await client.send_message(destination, "/convert")
                 await log_to_chat(client, f"Comando /convert enviado en {destination}")
 
     except Exception as e:
@@ -67,6 +75,29 @@ async def handle_message(client, message: Message):
         print(error_message)
 
 
+@app.on_message(filters.chat(DESTINATIONS) & filters.video)
+async def reenviar_a_canal(client, message: Message):
+    """
+    Manejador para reenviar videos desde DESTINATIONS al canal sin información del remitente original.
+    """
+    try:
+        # Recrear el video en el canal especificado
+        await client.send_video(
+            CHANNEL_USERNAME,
+            message.video.file_id,
+            caption=message.caption or "Sin subtítulo"
+        )
+
+        await log_to_chat(client, f"Video reenviado al canal {CHANNEL_USERNAME}")
+
+    except Exception as e:
+        # Registrar errores
+        error_message = f"Error al reenviar video al canal:\n{traceback.format_exc()}"
+        await log_to_chat(client, error_message)
+        print(error_message)
+
+
 if __name__ == "__main__":
     print("El bot está en funcionamiento...")
     app.run()
+        
