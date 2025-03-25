@@ -41,7 +41,7 @@ async def handle_message(client, message: Message):
         await log_to_chat(client, f"Mensaje recibido: {message.text}")
 
         # Verificar palabras clave
-        if any(keyword in message.text.lower() for keyword in KEYWORDS):
+        if any(keyword.lower() in message.text.lower() for keyword in KEYWORDS):
             # Determinar el destinatario
             destination = DESTINATIONS[destination_index]
             destination_index = (destination_index + 1) % len(DESTINATIONS)
