@@ -37,11 +37,14 @@ async def handle_message(client, message: Message):
     global destination_index
 
     try:
+        # Obtener texto del mensaje o subtítulo (caption)
+        texto_del_mensaje = message.text or message.caption or "Sin texto"
+
         # Registrar que se recibió un mensaje
-        await log_to_chat(client, f"Mensaje recibido: {message.text or 'Sin texto'}")
+        await log_to_chat(client, f"Mensaje recibido: {texto_del_mensaje}")
 
         # Verificar si el texto contiene alguna palabra clave
-        if message.text and any(keyword.lower() in message.text.lower() for keyword in KEYWORDS):
+        if any(keyword.lower() in texto_del_mensaje.lower() for keyword in KEYWORDS):
             # Determinar el destinatario
             destination = DESTINATIONS[destination_index]
             destination_index = (destination_index + 1) % len(DESTINATIONS)
