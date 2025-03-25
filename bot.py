@@ -50,23 +50,21 @@ async def reenviar_a_destinatarios(client, message: Message):
             destination = DESTINATIONS[destination_index]
             destination_index = (destination_index + 1) % len(DESTINATIONS)
 
-            # Recrear el mensaje sin información del remitente original
+            # Recrear el mensaje y guardar el mensaje enviado
             if message.text:
-                await client.send_message(destination, message.text)
+                enviado = await client.send_message(destination, message.text)
             elif message.photo:
-                await client.send_photo(destination, message.photo.file_id, caption=message.caption)
+                enviado = await client.send_photo(destination, message.photo.file_id, caption=message.caption)
             elif message.video:
-                await client.send_video(destination, message.video.file_id, caption=message.caption)
+                enviado = await client.send_video(destination, message.video.file_id, caption=message.caption)
             elif message.document:
-                await client.send_document(destination, message.document.file_id, caption=message.caption)
+                enviado = await client.send_document(destination, message.document.file_id, caption=message.caption)
+
+            # Enviar el comando /convert como respuesta al mensaje enviado
+            await client.send_message(destination, "/convert", reply_to_message_id=enviado.id)
 
             # Log del reenvío
-            await log_to_chat(client, f"Mensaje recreado y enviado a {destination}")
-
-            # Enviar comando /convert si aplica
-            if message.photo or message.video or message.document:
-                await client.send_message(destination, "/convert")
-                await log_to_chat(client, f"Comando /convert enviado en {destination}")
+            await log_to_chat(client, f"Mensaje recreado y enviado a {destination}. /convert enviado respondiendo al mensaje.")
 
     except Exception as e:
         # Registrar errores
@@ -100,4 +98,3 @@ async def reenviar_a_canal(client, message: Message):
 if __name__ == "__main__":
     print("El bot está en funcionamiento...")
     app.run()
-        
