@@ -3,56 +3,66 @@ import traceback
 from pyrogram import Client, filters
 from pyrogram.types import Message
 
-# Inicializa el cliente de Pyrogram con la sesión y las credenciales de API
-app = Client("bot", 
-             session_string=os.environ["SESSION_STRING"], 
-             api_id=int(os.environ["API_ID"]), 
-             api_hash=os.environ["API_HASH"])
+# Inicializar Pyrogram con la sesión y credenciales
+app = Client(
+    "bot",
+    api_id=int(os.environ["API_ID"]),
+    api_hash=os.environ["API_HASH"],
+    session_string=os.environ["SESSION_STRING"]
+)
 
-# Variables de entorno adicionales
+# Variables de entorno necesarias
 CHAT_ID = int(os.environ["CHAT_ID"])  # ID del chat a monitorear
-KEYWORDS = os.environ["KEYWORDS"].split(",")  # Palabras clave separadas por comas
-DESTINATIONS = os.environ["DESTINATIONS"].split(",")  # Lista de @usuarios o chat_ids
-destination_index = 0  # Índice para controlar el destinatario
+KEYWORDS = os.environ["KEYWORDS"].split(",")  # Palabras clave, separadas por comas
+DESTINATIONS = os.environ["DESTINATIONS"].split(",")  # Lista de destinatarios
+LOG_CHAT_ID = int(os.environ["LOG_CHAT_ID"])  # ID del chat para logs
+destination_index = 0  # Índice para rotar destinatarios
 
-# Función para registrar todo (errores y acciones)
+
 async def log_to_chat(client, log_message: str):
+    """
+    Enviar un mensaje al chat de logs para depuración.
+    """
     try:
-        await client.send_message(CHAT_ID, log_message)
+        await client.send_message(LOG_CHAT_ID, log_message)
     except Exception as e:
-        print(f"No se pudo enviar el log al chat: {e}")
+        print(f"No se pudo enviar el log: {e}")
 
-# Función para procesar y reenviar mensajes
-@app.on_message(filters.chat(CHAT_ID) & filters.text & filters.media)
+
+@app.on_message(filters.chat(CHAT_ID) & filters.text)
 async def handle_message(client, message: Message):
+    """
+    Procesar mensajes de un chat específico.
+    """
     global destination_index
 
     try:
-        # Registra que se recibió un mensaje
-        await log_to_chat(client, f"Mensaje recibido:\n\n{message.text}")
+        # Registrar que se recibió un mensaje
+        await log_to_chat(client, f"Mensaje recibido: {message.text}")
 
-        # Verifica si el texto contiene alguna de las palabras clave
-        if any(keyword in message.text for keyword in KEYWORDS):
-            # Obtén el destinatario actual
+        # Verificar palabras clave
+        if any(keyword in message.text.lower() for keyword in KEYWORDS):
+            # Determinar el destinatario
             destination = DESTINATIONS[destination_index]
-            destination_index = (destination_index + 1) % len(DESTINATIONS)  # Rota al siguiente destinatario
+            destination_index = (destination_index + 1) % len(DESTINATIONS)
 
-            # Reenvía el mensaje
+            # Reenviar el mensaje
             forwarded_message = await message.forward(destination)
 
-            # Registra la acción de reenvío
-            await log_to_chat(client, f"Mensaje reenviado a: {destination}")
+            # Log de reenvío
+            await log_to_chat(client, f"Mensaje reenviado a {destination}: {forwarded_message.link}")
 
-            # Responde al video reenviado con el mensaje "/convert"
-            if forwarded_message.video:
+            # Enviar "/convert" si es un video
+            if message.video:
                 await forwarded_message.reply_text("/convert")
-                await log_to_chat(client, f"Comando /convert enviado al mensaje reenviado en {destination}")
+                await log_to_chat(client, f"Comando /convert enviado en {destination}")
 
     except Exception as e:
-        # Captura el error y registra el log detallado
-        error_message = f"Se produjo un error:\n{traceback.format_exc()}"
+        # Registrar errores
+        error_message = f"Error procesando mensaje:\n{traceback.format_exc()}"
         await log_to_chat(client, error_message)
+        print(error_message)
 
-if __name__ == "__main__":
-    print("El bot está en funcionamiento...")
-    app.run()
+print("El bot está en funcionamiento...")
+app.run()
+print("El bot está en funcionamiento...")
